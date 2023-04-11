@@ -28,8 +28,7 @@ class downloader():
                 print(f"[ADD] adding {vals[1]} @ id {vals[0]}")
                 return current_app.send_static_file("good.png")
             if(path.startswith("kill")):
-                self.count = int(path[4:])
-                print(self.count)
+                print("clearing!")
                 for filename in os.listdir(self.folder):
                     file_path = os.path.join(self.folder, filename)
                     try:
@@ -46,31 +45,28 @@ class downloader():
                 # print(tabid)
                 if tabid in self.count:
                     print(f"[FOUND] id:{tabid}")
-                    count = self.count[tabid]
                     url = path[len(tabid):]#.split("?")[0]
-
                     
-                    # filename = "".join(url.split("/")[-2:])
-                    # if("?" in filename):
-                    #     filename = filename.split("?")[0]
+                    filename = "".join(url.split("/")[-2:])
+                    if("?" in filename):
+                        filename = filename.split("?")[0]
                     
-                    # with open("links.txt", "a") as r:
-                    #     r.write(url + ":\t" + filename+"\n")
-                    # print(filename)
-                    # with requests.get(url, allow_redirects=True) as response, open(self.folder+"/" +filename, 'wb') as f:
-                    #     #print(response.text)
-                    #     print(response.status_code)
-                    #     data = response.content
-                    #     f.write(data)
+                    with open("links.txt", "a") as r:
+                        r.write(url + ":\t" + filename+"\n")
+                    print(filename)
+                    with requests.get(url, allow_redirects=True) as response, open(self.folder+"/" +filename, 'wb') as f:
+                        #print(response.text)
+                        print(response.status_code)
+                        data = response.content
+                        f.write(data)
                     self.count[tabid] -= 1
                     print(f"[WROTE] {url}, remaining: {self.count[tabid]}")
-                    if(count>1):
+                    if(self.count[tabid]>1):
                         return current_app.send_static_file("good.png")
                     else:
                         print("sending done code!")
                         return current_app.send_static_file("done.png")
-            else:
-                return current_app.send_static_file("bad.png")
+            return current_app.send_static_file("bad.png")
     def run(self):
         self.app.run(port=6969,debug=False)
 
