@@ -12,7 +12,7 @@ log.setLevel(logging.ERROR)
 
 class downloader():
     lock = threading.Lock()
-    def __init__(self, folder="images"):
+    def __init__(self, folder="images",fixname=True):
         self.app = Flask(__name__)
         # img = Image.open(f'small.png')
         # @app.route('/')
@@ -21,6 +21,7 @@ class downloader():
         with open("links.txt", "w") as r:
             r.write("")
         self.setup_routes()
+        self.fixname=fixname
         self.links = []
         self.completed ={}
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
@@ -44,6 +45,10 @@ class downloader():
                 with open("links.txt", "a") as r:
                     r.write(link + ":\t" + filename+"\n")
                 print(filename)
+                if(self.fixname):
+                    ending = filename.split(".")[1]
+                    # filename = f"image({self.total}{tabid}{self.count[tabid]}).{ending}"
+                    filename = f"image({len(self.links)}).{ending}"
                 with requests.get(link, allow_redirects=True) as response, open(self.folder+"/" +filename, 'wb') as f:
                     #print(response.text)
                     # print(response.status_code)
