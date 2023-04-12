@@ -31,21 +31,25 @@ class downloader():
             self.count[tabid] -= 1
             self.total -= 1
             self.links.append(link)
-        if(self.total) >= 0:
-            filename = f"total{self.total}_" + "".join(link.split("/")[-2:])
-            if("?" in filename):
-                filename = filename.split("?")[0]
-            if(not "." in filename):
-                filename += ".jpeg"
-            with open("links.txt", "a") as r:
-                r.write(link + ":\t" + filename+"\n")
-            print(filename)
-            with requests.get(link, allow_redirects=True) as response, open(self.folder+"/" +filename, 'wb') as f:
-                #print(response.text)
-                # print(response.status_code)
-                data = response.content
-                f.write(data)
-                print(f"[{tabid}WROTE] {link[:15]} \n\ttabremaining: {self.count[tabid]} \n\ttotal remaining: {self.total}")
+            if(self.total) >= 0:
+                filename = f"total{self.total}_" + "".join(link.split("/")[-2:])
+                if("?" in filename):
+                    filename = filename.split("?")[0]
+                if(not "." in filename ):
+                    filename += ".jpeg"
+                if(filename.count(".")>1):
+                    print(f"[WARNING] has too many dots {filename}")
+                    filename = filename.replace(".",'')
+                    filename += ".jpeg"
+                with open("links.txt", "a") as r:
+                    r.write(link + ":\t" + filename+"\n")
+                print(filename)
+                with requests.get(link, allow_redirects=True) as response, open(self.folder+"/" +filename, 'wb') as f:
+                    #print(response.text)
+                    # print(response.status_code)
+                    data = response.content
+                    f.write(data)
+                    print(f"[{tabid}WROTE] {link[:15]} \n\ttabremaining: {self.count[tabid]} \n\ttotal remaining: {self.total}")
         # self.count[tabid] -= 1
         # self.total -= 1
         # self.links.append(link)
@@ -59,7 +63,8 @@ class downloader():
     
     def add(self,link,tabid):
         # self.todownload.append(link)
-
+        if(self.total==0):
+            return
         self.executor.submit(self.download,link, tabid)
         
         
@@ -119,7 +124,7 @@ class downloader():
                         self.total = 0
                     if self.total == 0:
                         self.count = {}
-                        print(f"unique pictures downloaded: {len(list(set(self.links)))}")
+                        # print(f"unique pictures downloaded: {len(list(set(self.links)))}")
                         return current_app.send_static_file("done.png")
                     if(self.count[tabid]>0):
                         print("sending continue")
