@@ -1,7 +1,7 @@
 from flask import Flask, current_app
 # from PIL import Image
-import requests,re,os,shutil#,unicodedata
-from urllib.request import urlretrieve
+import requests,os,shutil#,unicodedata
+
 
 import concurrent.futures
 import threading 
@@ -12,14 +12,19 @@ log.setLevel(logging.ERROR)
 
 class downloader():
     lock = threading.Lock()
-    def __init__(self, folder="images",fixname=False):
+    def __init__(self, folder="images",fixname=False,links:str=None ):
         self.app = Flask(__name__)
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+            print(f"Making '{folder}'")
         # img = Image.open(f'small.png')
         # @app.route('/')
         self.folder = folder
         self.count = {}
-        with open("links.txt", "w") as r:
-            r.write("")
+        self.linkfile = links
+        if(links):
+            with open(f"{links}.txt", "w") as r:
+                r.write("")
         self.setup_routes()
         self.fixname=fixname
         self.links = []
@@ -59,8 +64,9 @@ class downloader():
                     ending = filename.split(".")[1]
                     # filename = f"image({self.total}{tabid}{self.count[tabid]}).{ending}"
                     filename = f"image({len(self.links)}).{ending}"
-                with open("links.txt", "a") as r:
-                    r.write(link + ":\t" + filename+"\n")
+                if(self.linkfile):
+                    with open(f"{self.linkfile}.txt", "a") as r:
+                        r.write(link + ":\t" + filename+"\n")
                 with open(self.folder+"/" +filename, 'wb') as f:
                     #print(response.text)
                     # print(response.status_code)
@@ -163,8 +169,10 @@ class downloader():
     def run(self):
         self.app.run(port=6969,debug=False)
 
+
+__add__=["downloader"]
 if __name__ == '__main__':
     # app.run(port=6969,debug=True)
-    a = downloader()
+    a = downloader(links="a")
     a.run()
 #gunicorn downloader:app -w 4 -b 127.0.0.1:8000
