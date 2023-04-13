@@ -1,7 +1,7 @@
 from flask import Flask, current_app
 # from PIL import Image
 import requests,re,os,shutil#,unicodedata
-
+from urllib.request import urlretrieve
 
 import concurrent.futures
 import threading 
@@ -12,7 +12,7 @@ log.setLevel(logging.ERROR)
 
 class downloader():
     lock = threading.Lock()
-    def __init__(self, folder="images",fixname=True):
+    def __init__(self, folder="images",fixname=False):
         self.app = Flask(__name__)
         # img = Image.open(f'small.png')
         # @app.route('/')
@@ -24,15 +24,13 @@ class downloader():
         self.fixname=fixname
         self.links = []
         self.completed ={}
-        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
         self.total=0
 
     def download(self,link,tabid):
         with self.lock:
-            self.count[tabid] -= 1
-            self.total -= 1
-            self.links.append(link)
-            if(self.total) >= 0:
+            if(self.total) > 0:
+                
                 filename = f"total{self.total}_" + "".join(link.split("/")[-2:])
                 if("?" in filename):
                     filename = filename.split("?")[0]
@@ -44,21 +42,38 @@ class downloader():
                     filename += ".jpeg"
                 with open("links.txt", "a") as r:
                     r.write(link + ":\t" + filename+"\n")
-                print(filename)
+                print(f"[DOWNLOADING] {filename} NOW")
                 if(self.fixname):
                     ending = filename.split(".")[1]
                     # filename = f"image({self.total}{tabid}{self.count[tabid]}).{ending}"
                     filename = f"image({len(self.links)}).{ending}"
-                with requests.get(link, allow_redirects=True) as response, open(self.folder+"/" +filename, 'wb') as f:
-                    #print(response.text)
-                    # print(response.status_code)
-                    data = response.content
-                    f.write(data)
-                    print(f"[{tabid}WROTE] {link[:15]} \n\ttabremaining: {self.count[tabid]} \n\ttotal remaining: {self.total}")
+                try:
+                    response = requests.get(link,timeout=0.5,allow_redirects=True)
+                    print(f"CODE: {response.status_code}")
+                    if(not response.status_code == 200):
+                        raise Exception("Wrong status code.")
+                    with open(self.folder+"/" +filename, 'wb') as f:
+                        #print(response.text)
+                        # print(response.status_code)
+                        data = response.content
+                        # print(data)
+                        f.write(data)
+                    #     
+                    # urlretrieve(link, self.folder+"/"+filename)
+
+                    print(f"[{tabid}-WROTE] {link[:15]} \n\ttabremaining: {self.count[tabid]} \n\ttotal remaining: {self.total}")
+                    
+                except Exception as e:
+                    print(f"[FAILURE] Downloading {filename} failed as:",e)
+                    return
         # self.count[tabid] -= 1
         # self.total -= 1
         # self.links.append(link)
         # print(f"Downloaded! {link[:10]} remaining:{self.total}")
+                self.count[tabid] -= 1
+                self.total -= 1
+                self.links.append(link)
+                print(f"[DONE] DOWNLOADING {filename}")
         return
         # 
         # 
@@ -70,6 +85,7 @@ class downloader():
         # self.todownload.append(link)
         if(self.total==0):
             return
+        print(f"[DOWNLOAD] adding {link} now")
         self.executor.submit(self.download,link, tabid)
         
         
@@ -115,14 +131,15 @@ class downloader():
                 tabid = path[:path.index("http")]
                 url = path[len(tabid):]#.split("?")[0]
                 if url in self.links:
-                    print("sending continue")
+                    print("sending continue: link was already grabbed")
                     return current_app.send_static_file("good.png")
                 # print(tabid)
-                print(self.count)
+                # print(self.count)
                 if tabid in self.count:
                     # print(f"[FOUND] id:{tabid}")
                     if(self.count[tabid] > 0):
                         #DOWNLOAD FILE HERE
+                        # print(f"[DOWNLOAD] adding {url} now")
                         self.add(url,tabid)
                         pass
                     if self.total < 0:
@@ -132,7 +149,7 @@ class downloader():
                         # print(f"unique pictures downloaded: {len(list(set(self.links)))}")
                         return current_app.send_static_file("done.png")
                     if(self.count[tabid]>0):
-                        print("sending continue")
+                        print("sending continue: link was good")
                         
                         return current_app.send_static_file("good.png")
                     else:
