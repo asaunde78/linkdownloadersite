@@ -23,14 +23,28 @@ class downloader():
         self.setup_routes()
         self.fixname=fixname
         self.links = []
-        self.completed ={}
+        self.futures =[]
+
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
         self.total=0
 
     def download(self,link,tabid):
+        
+        try:
+            response = requests.get(link,timeout=1,allow_redirects=True)
+            # print(f"CODE: {response.status_code}")
+            if(not response.status_code == 200):
+                raise Exception("Wrong status code.")
+        except Exception as e:
+            print(f"[FAILURE] Downloading failed as:",e)
+            return
+        
+        # print(f"Grabbing lock: {self.lock.acquire()}")
+        # print(self.lock.locked())
+        # with self.lock:
         with self.lock:
             if(self.total) > 0:
-                
+                print(f"[DOWNLOADING] {link} NOW")
                 filename = f"total{self.total}_" + "".join(link.split("/")[-2:])
                 if("?" in filename):
                     filename = filename.split("?")[0]
@@ -40,53 +54,37 @@ class downloader():
                     print(f"[WARNING] has too many dots {filename}")
                     filename = filename.replace(".",'')
                     filename += ".jpeg"
-                with open("links.txt", "a") as r:
-                    r.write(link + ":\t" + filename+"\n")
-                print(f"[DOWNLOADING] {filename} NOW")
                 if(self.fixname):
                     ending = filename.split(".")[1]
                     # filename = f"image({self.total}{tabid}{self.count[tabid]}).{ending}"
                     filename = f"image({len(self.links)}).{ending}"
-                try:
-                    response = requests.get(link,timeout=0.5,allow_redirects=True)
-                    print(f"CODE: {response.status_code}")
-                    if(not response.status_code == 200):
-                        raise Exception("Wrong status code.")
-                    with open(self.folder+"/" +filename, 'wb') as f:
-                        #print(response.text)
-                        # print(response.status_code)
-                        data = response.content
-                        # print(data)
-                        f.write(data)
-                    #     
-                    # urlretrieve(link, self.folder+"/"+filename)
-
-                    print(f"[{tabid}-WROTE] {link[:15]} \n\ttabremaining: {self.count[tabid]} \n\ttotal remaining: {self.total}")
-                    
-                except Exception as e:
-                    print(f"[FAILURE] Downloading {filename} failed as:",e)
-                    return
-        # self.count[tabid] -= 1
-        # self.total -= 1
-        # self.links.append(link)
-        # print(f"Downloaded! {link[:10]} remaining:{self.total}")
+                with open("links.txt", "a") as r:
+                    r.write(link + ":\t" + filename+"\n")
+                with open(self.folder+"/" +filename, 'wb') as f:
+                    #print(response.text)
+                    # print(response.status_code)
+                    data = response.content
+                    # print(data)
+                    f.write(data)
+                #     
+                # urlretrieve(link, self.folder+"/"+filename)
+                print(f"[{tabid}-WROTE] {link[:15]}  \n\ttabremaining: {self.count[tabid]} \n\ttotal remaining: {self.total}")
                 self.count[tabid] -= 1
                 self.total -= 1
                 self.links.append(link)
                 print(f"[DONE] DOWNLOADING {filename}")
         return
-        # 
-        # 
-        # except:
-        #     print("something fucked up")
-        #     return current_app.send_static_file("bad.png") 
+    
     
     def add(self,link,tabid):
         # self.todownload.append(link)
         if(self.total==0):
             return
-        print(f"[DOWNLOAD] adding {link} now")
+        # print(f"[DOWNLOAD] adding {link} now")
+        # self.futures.append(self.executor.submit(self.download,link, tabid))
+        # print(concurrent.futures.as_completed(self.futures))
         self.executor.submit(self.download,link, tabid)
+        
         
         
     def setup_routes(self):
@@ -97,7 +95,7 @@ class downloader():
                 vals = path[3:]
                 vals = vals.split(",")
                 self.count[vals[0]] = int(vals[1]) 
-                self.completed[vals[0]] = [False]*int(vals[1])
+                
                 print(f"[ADD] adding {vals[1]} @ id {vals[0]}")
                 if self.total == None:
                     self.total = int(vals[1])
@@ -108,7 +106,7 @@ class downloader():
                 self.total= None
                 self.links = []
                 self.count = {}
-                self.completed = {}
+                self.futures = []
                 self.working = True
                 print("clearing!")
                 for filename in os.listdir(self.folder):
@@ -149,8 +147,7 @@ class downloader():
                         # print(f"unique pictures downloaded: {len(list(set(self.links)))}")
                         return current_app.send_static_file("done.png")
                     if(self.count[tabid]>0):
-                        print("sending continue: link was good")
-                        
+                        # print("sending continue: link was good")
                         return current_app.send_static_file("good.png")
                     else:
                         # print(f"sending done code! removing {tabid}")
