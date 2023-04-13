@@ -29,7 +29,8 @@ class downloader():
         self.total=0
 
     def download(self,link,tabid):
-        
+        if(self.total) <= 0:
+            return
         try:
             response = requests.get(link,timeout=1,allow_redirects=True)
             # print(f"CODE: {response.status_code}")
