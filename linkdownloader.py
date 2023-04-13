@@ -92,6 +92,7 @@ class downloader():
         @self.app.route('/', defaults={'path': ''})
         @self.app.route('/<path:path>')
         def index(path):
+            # print(path)
             if(path.startswith("add")):
                 vals = path[3:]
                 vals = vals.split(",")
@@ -107,7 +108,7 @@ class downloader():
                 self.total= None
                 self.links = []
                 self.count = {}
-                self.futures = []
+                
                 self.working = True
                 print("clearing!")
                 for filename in os.listdir(self.folder):
