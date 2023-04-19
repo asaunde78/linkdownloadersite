@@ -54,16 +54,13 @@ class downloader():
                 filename = f"total{self.total}_" + "".join(link.split("/")[-2:])
                 if("?" in filename):
                     filename = filename.split("?")[0]
-                if(not "." in filename ):
-                    filename += ".jpeg"
-                if(filename.count(".")>1):
-                    print(f"[WARNING] has too many dots {filename}")
-                    filename = filename.replace(".",'')
-                    filename += ".jpeg"
                 if(self.fixname):
-                    ending = filename.split(".")[1]
+                    ending = filename.split(".")[-1]
                     # filename = f"image({self.total}{tabid}{self.count[tabid]}).{ending}"
                     filename = f"image({len(self.links)}).{ending}"
+                ending = filename.split(".")[-1]
+                if(not ending in ["jpeg","png","jpg"]):
+                    return
                 if(self.linkfile):
                     with open(f"{self.linkfile}.txt", "a") as r:
                         r.write(link + ":\t" + filename+"\n")
@@ -173,6 +170,6 @@ class downloader():
 __add__=["downloader"]
 if __name__ == '__main__':
     # app.run(port=6969,debug=True)
-    a = downloader(links="a")
+    a = downloader(links="images")
     a.run()
 #gunicorn downloader:app -w 4 -b 127.0.0.1:8000
